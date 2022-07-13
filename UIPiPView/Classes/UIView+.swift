@@ -43,7 +43,7 @@ public extension UIView {
             ] as CFDictionary, &pixelBuffer)
 
         if status != kCVReturnSuccess {
-            assertionFailure("[UIPiPView] Failed to create CVPixelBuffer: \(status)")
+            print("[UIPiPView] Failed to create CVPixelBuffer: \(status)")
             return nil
         }
 
@@ -70,7 +70,7 @@ public extension UIView {
             formatDescriptionOut: &formatDescription)
 
         if status != kCVReturnSuccess {
-            assertionFailure("[UIPiPView] Failed to create CMFormatDescription: \(status)")
+            print("[UIPiPView] Failed to create CMFormatDescription: \(status)")
             return nil
         }
 
@@ -87,11 +87,11 @@ public extension UIView {
                     formatDescription: formatDescription!,
                     sampleTiming: timingInfo)
             } else {
-                assertionFailure("[UIPiPView] Not supported under iOS 13.")
+                print("[UIPiPView] Not supported under iOS 13.")
                 return nil
             }
         } catch {
-            assertionFailure("[UIPiPView] Failed to create CVSampleBuffer: \(error)")
+            print("[UIPiPView] Failed to create CVSampleBuffer: \(error)")
             return nil
         }
     }

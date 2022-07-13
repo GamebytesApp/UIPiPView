@@ -9,6 +9,12 @@ import UIKit
 import AVKit
 import AVFoundation
 
+public protocol PiPViewDelegate: AnyObject {
+  func willStopPictureInPicture()
+  func willStartPictureInPicture()
+  func failedToStartPictureInPicture(errorDescription: String?)
+}
+
 open class UIPiPView: UIView,
     AVPictureInPictureControllerDelegate,
     AVPictureInPictureSampleBufferPlaybackDelegate {
@@ -23,6 +29,7 @@ open class UIPiPView: UIView,
 
     public let pipBufferDisplayLayer = AVSampleBufferDisplayLayer()
 
+    weak var pipViewDelegate: PiPViewDelegate?
     private var pipController: AVPictureInPictureController?
     private var pipPossibleObservation: NSKeyValueObservation?
     private var frameSizeObservation: NSKeyValueObservation?
@@ -30,7 +37,6 @@ open class UIPiPView: UIView,
 
     private func initialize() {
         let session = AVAudioSession.sharedInstance()
-        try! session.setCategory(.playback, mode: .moviePlayback)
         try! session.setActive(true)
         setupVideoLayerView()
     }
@@ -52,6 +58,7 @@ open class UIPiPView: UIView,
     /// This function will not automatically update the video image. You should call the render() function.
     open func startPictureInPictureWithManualCallRender() {
         initialize()
+        
         DispatchQueue.main.async { [weak self] in
             self?.startPictureInPictureSub(refreshInterval: nil)
         }
@@ -71,6 +78,7 @@ open class UIPiPView: UIView,
             }
 
             guard let pipController = pipController else { return }
+            
             if (pipController.isPictureInPicturePossible) {
 
                 /// Start asynchronously after processing is complete
@@ -108,7 +116,7 @@ open class UIPiPView: UIView,
     /// Since PinP requires a layer with the video on the screen, prepare a View.
     private func setupVideoLayerView() {
         if (videoLayerView.superview == nil) {
-
+            
             self.addSubview(videoLayerView)
             self.sendSubviewToBack(videoLayerView)
             videoLayerView.frame = self.bounds
@@ -133,6 +141,7 @@ open class UIPiPView: UIView,
         if pipController.isPictureInPictureActive {
             pipController.stopPictureInPicture()
         }
+        
         if refreshIntervalTimer != nil {
             refreshIntervalTimer.invalidate()
             refreshIntervalTimer = nil
@@ -164,10 +173,14 @@ open class UIPiPView: UIView,
     open func setRenderInterval(
         _ interval: TimeInterval
     ) {
-        refreshIntervalTimer = Timer(
-            timeInterval: interval, repeats: true) { [weak self] _ in
-            guard let self = self else { return }
-            self.render()
+        if #available(iOS 10.0, *) {
+            refreshIntervalTimer = Timer(
+                timeInterval: interval, repeats: true) { [weak self] _ in
+                    guard let self = self else { return }
+                    self.render()
+                }
+        } else {
+            // Fallback on earlier versions
         }
         RunLoop.main.add(refreshIntervalTimer, forMode: .default)
     }
@@ -184,11 +197,13 @@ open class UIPiPView: UIView,
         _ pictureInPictureController: AVPictureInPictureController,
         failedToStartPictureInPictureWithError error: Error
     ) {
+        pipViewDelegate?.failedToStartPictureInPicture(errorDescription: error.localizedDescription)
     }
 
     open func pictureInPictureControllerWillStartPictureInPicture(
         _ pictureInPictureController: AVPictureInPictureController
     ) {
+        pipViewDelegate?.willStartPictureInPicture()
     }
 
     /// Always call the parent when overriding this function.
@@ -197,6 +212,8 @@ open class UIPiPView: UIView,
     ) {
         refreshIntervalTimer?.invalidate()
         refreshIntervalTimer = nil
+        
+        pipViewDelegate?.willStopPictureInPicture()
     }
 
     // MARK: AVPictureInPictureSampleBufferPlaybackDelegate
@@ -233,5 +250,9 @@ open class UIPiPView: UIView,
         completion completionHandler: @escaping () -> Void
     ) {
         completionHandler()
+    }
+    
+    open func setDelegate(_ delegate: PiPViewDelegate) {
+        self.pipViewDelegate = delegate
     }
 }
