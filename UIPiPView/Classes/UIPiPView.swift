@@ -31,14 +31,16 @@ open class UIPiPView: UIView,
 
     weak var pipViewDelegate: PiPViewDelegate?
     private var pipController: AVPictureInPictureController?
+    
     private var pipPossibleObservation: NSKeyValueObservation?
     private var frameSizeObservation: NSKeyValueObservation?
     private var refreshIntervalTimer: Timer!
 
-    private func initialize() {
+    public func initialize() {
         let session = AVAudioSession.sharedInstance()
         try! session.setActive(true)
         setupVideoLayerView()
+        
     }
 
     /// Starts PinP.
@@ -76,6 +78,7 @@ open class UIPiPView: UIView,
                     playbackDelegate: self))
                 pipController?.delegate = self
             }
+            
 
             guard let pipController = pipController else { return }
             
@@ -85,6 +88,7 @@ open class UIPiPView: UIView,
                 /// (will not work if run here synchronously)
                 DispatchQueue.main.async { [weak self] in
                     pipController.startPictureInPicture()
+                    pipController.requiresLinearPlayback = true
                     if let ti = refreshInterval {
                         self?.setRenderInterval(ti)
                     }
@@ -99,6 +103,7 @@ open class UIPiPView: UIView,
 
                     if (change.newValue ?? false) {
                         pipController.startPictureInPicture()
+                        pipController.requiresLinearPlayback = true
                         self.pipPossibleObservation = nil
                         if let ti = refreshInterval {
                             self.setRenderInterval(ti)
